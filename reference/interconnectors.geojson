@@ -1,0 +1,315 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "IFA",
+        "csv_column": "INTFR",
+        "country": "France",
+        "capacity_mw": 2000,
+        "year": 2000,
+        "gb_terminal": [
+          -0.9939,
+          51.0889
+        ],
+        "foreign_terminal": [
+          1.8847,
+          50.9031
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -0.9939,
+            51.0889
+          ],
+          [
+            1.8847,
+            50.9031
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "IFA2",
+        "csv_column": "INTIFA2",
+        "country": "France",
+        "capacity_mw": 1000,
+        "year": 2021,
+        "gb_terminal": [
+          -1.3167,
+          50.8167
+        ],
+        "foreign_terminal": [
+          -0.9833,
+          49.35
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -1.3167,
+            50.8167
+          ],
+          [
+            -0.9833,
+            49.35
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Eleclink",
+        "csv_column": "INTELEC",
+        "country": "France",
+        "capacity_mw": 1000,
+        "year": 2022,
+        "gb_terminal": [
+          1.1581,
+          51.0922
+        ],
+        "foreign_terminal": [
+          1.7833,
+          50.8833
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1.1581,
+            51.0922
+          ],
+          [
+            1.7833,
+            50.8833
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Nemo Link",
+        "csv_column": "INTNEM",
+        "country": "Belgium",
+        "capacity_mw": 1000,
+        "year": 2019,
+        "gb_terminal": [
+          1.3167,
+          51.3167
+        ],
+        "foreign_terminal": [
+          3.1833,
+          51.3333
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            1.3167,
+            51.3167
+          ],
+          [
+            3.1833,
+            51.3333
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "BritNed",
+        "csv_column": "INTNED",
+        "country": "Netherlands",
+        "capacity_mw": 1000,
+        "year": 2011,
+        "gb_terminal": [
+          0.7167,
+          51.45
+        ],
+        "foreign_terminal": [
+          4.0167,
+          51.95
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.7167,
+            51.45
+          ],
+          [
+            4.0167,
+            51.95
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Viking Link",
+        "csv_column": "INTVKL",
+        "country": "Denmark",
+        "capacity_mw": 1400,
+        "year": 2024,
+        "gb_terminal": [
+          -0.1833,
+          52.95
+        ],
+        "foreign_terminal": [
+          9.15,
+          55.4333
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -0.1833,
+            52.95
+          ],
+          [
+            9.15,
+            55.4333
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "North Sea Link",
+        "csv_column": "INTNSL",
+        "country": "Norway",
+        "capacity_mw": 1400,
+        "year": 2021,
+        "gb_terminal": [
+          -1.5429,
+          55.1464
+        ],
+        "foreign_terminal": [
+          6.6543,
+          59.5284
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -1.5429,
+            55.1464
+          ],
+          [
+            6.6543,
+            59.5284
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Moyle",
+        "csv_column": "INTIRL",
+        "country": "Northern Ireland",
+        "capacity_mw": 500,
+        "year": 2002,
+        "gb_terminal": [
+          -4.9806,
+          55.0694
+        ],
+        "foreign_terminal": [
+          -5.7697,
+          54.8428
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -4.9806,
+            55.0694
+          ],
+          [
+            -5.7697,
+            54.8428
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "East-West",
+        "csv_column": "INTEW",
+        "country": "Ireland",
+        "capacity_mw": 500,
+        "year": 2012,
+        "gb_terminal": [
+          -4.9833,
+          51.6833
+        ],
+        "foreign_terminal": [
+          -6.6833,
+          53.65
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -4.9833,
+            51.6833
+          ],
+          [
+            -6.6833,
+            53.65
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Greenlink",
+        "csv_column": "INTGRNL",
+        "country": "Ireland",
+        "capacity_mw": 500,
+        "year": 2024,
+        "gb_terminal": [
+          -4.9667,
+          51.6833
+        ],
+        "foreign_terminal": [
+          -6.9667,
+          52.2833
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -4.9667,
+            51.6833
+          ],
+          [
+            -6.9667,
+            52.2833
+          ]
+        ]
+      }
+    }
+  ]
+}

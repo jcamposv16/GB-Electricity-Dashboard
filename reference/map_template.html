@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GB Carbon Intensity — Regional Map</title>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#1a1a2e; font-family:Arial,sans-serif; }
+    #map { width:100%; height:100vh; }
+
+    /* CI legend bottom-right */
+    .ci-legend {
+      background:rgba(15,52,96,0.92);
+      padding:12px 14px;
+      border-radius:8px;
+      border:1px solid #334;
+      color:#eee;
+      font-size:12px;
+      min-width:130px;
+    }
+    .legend-title {
+      font-size:11px;
+      color:#10b981;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      margin-bottom:8px;
+      font-weight:bold;
+    }
+    .legend-row {
+      display:flex;
+      align-items:center;
+      margin:4px 0;
+      gap:8px;
+    }
+    .legend-swatch {
+      width:14px; height:14px;
+      border-radius:3px;
+      flex-shrink:0;
+    }
+
+    /* Interconnector popup */
+    .ic-popup .leaflet-popup-content-wrapper {
+      background:#16213e;
+      border:1px solid #a78bfa;
+      border-radius:8px;
+      box-shadow:0 4px 20px rgba(167,139,250,0.3);
+      padding:0;
+    }
+    .ic-popup .leaflet-popup-tip {
+      background:#16213e;
+    }
+    .ic-popup .leaflet-popup-content {
+      margin:0;
+    }
+
+    /* Region tooltip */
+    .leaflet-tooltip {
+      background:rgba(15,52,96,0.95);
+      border:1px solid #334;
+      color:#eee;
+      border-radius:6px;
+      font-size:12px;
+      padding:6px 10px;
+    }
+    .leaflet-tooltip-top:before {
+      border-top-color:rgba(15,52,96,0.95);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+<script>
+var REGIONS_GEOJSON  = __REGIONS_GEOJSON__;
+var INTERCON_GEOJSON = __INTERCON_GEOJSON__;
+var CI_DATA          = __CI_DATA__;
+var PERIOD_LABEL     = "__PERIOD_LABEL__";
+var FLOW_DATA        = "__FLOW_DATA__";
+
+// ── Colour scale ──────────────────────────────────────────────
+function ciColour(v) {
+  if (v <= 50)  return '#10b981';
+  if (v <= 100) return '#84cc16';
+  if (v <= 150) return '#eab308';
+  if (v <= 200) return '#f97316';
+  if (v <= 300) return '#ef4444';
+  return '#7f1d1d';
+}
+function indexColour(idx) {
+  return {'very low':'#10b981','low':'#84cc16','moderate':'#eab308',
+          'high':'#f97316','very high':'#ef4444'}[idx] || '#888';
+}
+
+// ── Map ───────────────────────────────────────────────────────
+var map = L.map('map', {
+  center:[54.5,-2.5], zoom:6, zoomControl:true
+});
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {attribution:'&copy; OpenStreetMap &copy; CARTO',
+   subdomains:'abcd', maxZoom:19}
+).addTo(map);
+
+// ── Region polygons ───────────────────────────────────────────
+L.geoJSON(REGIONS_GEOJSON, {
+  filter: function(feat) {
+    return parseInt(feat.properties.regionid) <= 14;
+  },
+  style: function(feat) {
+    var rid = parseInt(feat.properties.regionid);
+    var ci  = CI_DATA[rid] ? CI_DATA[rid].ci : 0;
+    return {
+      fillColor:   ciColour(ci),
+      fillOpacity: 0.65,
+      color:       '#ffffff',
+      weight:      1.5,
+      opacity:     0.8
+    };
+  },
+  onEachFeature: function(feat, layer) {
+    var rid  = parseInt(feat.properties.regionid);
+    var info = CI_DATA[rid] || {};
+    var ci   = info.ci   || 0;
+    var name = info.name || 'Region ' + rid;
+    var idx  = info.index || '';
+    layer.bindTooltip(
+      '<b>' + name + '</b><br>' +
+      ci + ' gCO₂/kWh &nbsp; ' +
+      '<span style="color:' + indexColour(idx) + '">' +
+      idx.toUpperCase() + '</span><br>' +
+      '<span style="color:#aaa;font-size:11px">' +
+      'Wind ' + (info.wind||0) + '% &nbsp; ' +
+      'Solar ' + (info.solar||0) + '% &nbsp; ' +
+      'Gas ' + (info.gas||0) + '%</span>',
+      {sticky:true}
+    );
+    layer.on('mouseover', function() {
+      layer.setStyle({fillOpacity:0.85, weight:2.5});
+    });
+    layer.on('mouseout', function() {
+      layer.setStyle({fillOpacity:0.65, weight:1.5});
+    });
+    layer.on('click', function() {
+      map.fitBounds(layer.getBounds(), {padding:[40,40]});
+    });
+  }
+}).addTo(map);
+
+// ── Interconnector lines ──────────────────────────────────────
+L.geoJSON(INTERCON_GEOJSON, {
+  style: function() {
+    return {color:'#a78bfa', weight:2, opacity:0.8, dashArray:'6 4'};
+  }
+}).addTo(map);
+
+// ── Interconnector endpoint bubbles ───────────────────────────
+INTERCON_GEOJSON.features.forEach(function(feat) {
+  var p   = feat.properties;
+  var gb  = feat.geometry.coordinates[0];
+  var fgn = feat.geometry.coordinates[1];
+
+  var popup =
+    '<div style="background:#16213e;color:#eee;' +
+    'padding:14px 16px;border-radius:8px;min-width:220px;">' +
+    '<div style="color:#a78bfa;font-weight:bold;font-size:13px;' +
+    'margin-bottom:10px;letter-spacing:0.5px;">' +
+    p.name.toUpperCase() + '</div>' +
+    '<div style="font-size:12px;line-height:1.8;">' +
+    '<span style="color:#888">Technology: </span>' +
+    '<b>Interconnector</b><br>' +
+    '<span style="color:#888">Country: </span>' +
+    '<b>' + p.country + '</b><br>' +
+    '<span style="color:#888">Capacity: </span>' +
+    '<b>' + p.capacity_mw + ' MW</b><br>' +
+    '<span style="color:#888">Commissioned: </span>' +
+    '<b>' + p.year + '</b>' +
+    '</div>' +
+    '<div style="margin-top:10px;padding-top:8px;' +
+    'border-top:1px solid #2a3a5c;">' +
+    '<span style="color:#888;font-size:11px;">Current flow: </span>' +
+    (function() {
+      var flow = FLOW_DATA[p.name];
+      if (flow === null || flow === undefined) {
+        return '<span style="color:#555;font-size:12px;">No data</span>';
+      }
+      var abs   = Math.abs(flow);
+      var dir   = flow >= 0 ? "Import" : "Export";
+      var col   = flow >= 0 ? "#4ade80" : "#f87171";
+      var arrow = flow >= 0 ? "▲" : "▼";
+      return '<span style="color:' + col + ';font-weight:bold;font-size:13px;">' +
+             arrow + " " + abs.toLocaleString() + " MW</span>" +
+             '<span style="color:#888;font-size:11px;"> (' + dir + ')</span>';
+    })() +
+    '</div></div>';
+
+  // GB terminal (larger, brighter)
+  L.circleMarker([gb[1], gb[0]], {
+    radius:9, fillColor:'#a78bfa', fillOpacity:0.9,
+    color:'#fff', weight:2, opacity:1
+  }).bindPopup(popup, {maxWidth:280, className:'ic-popup'})
+    .addTo(map);
+
+  // Foreign terminal (smaller, darker)
+  L.circleMarker([fgn[1], fgn[0]], {
+    radius:7, fillColor:'#7c3aed', fillOpacity:0.75,
+    color:'#fff', weight:1.5, opacity:0.9
+  }).bindPopup(popup, {maxWidth:280, className:'ic-popup'})
+    .addTo(map);
+});
+
+// ── Animated flow dots ─────────────────────────────────────────
+(function() {
+  var dots   = [];
+  var active = true;
+
+  INTERCON_GEOJSON.features.forEach(function(feat) {
+    var p    = feat.properties;
+    var name = p.name;
+    var flow = FLOW_DATA[name];
+
+    if (flow === null || flow === undefined || flow === 0) return;
+
+    var gb  = feat.geometry.coordinates[0];
+    var fgn = feat.geometry.coordinates[1];
+
+    var from = flow > 0 ? fgn : gb;
+    var to   = flow > 0 ? gb  : fgn;
+
+    var abs      = Math.abs(flow);
+    var clamped  = Math.min(Math.max(abs, 200), 2000);
+    var duration = 4000 - (clamped - 200) / 1800 * 3200;
+
+    var progress = Math.random();
+
+    var startLat = from[1] + (to[1] - from[1]) * progress;
+    var startLon = from[0] + (to[0] - from[0]) * progress;
+
+    var dot = L.circleMarker([startLat, startLon], {
+      radius:      5,
+      color:       flow > 0 ? "#4ade80" : "#f87171",
+      fillColor:   flow > 0 ? "#4ade80" : "#f87171",
+      fillOpacity: 0.95,
+      opacity:     0.95,
+      weight:      0,
+      interactive: false,
+    }).addTo(map);
+
+    dots.push({
+      marker:   dot,
+      from:     from,
+      to:       to,
+      progress: progress,
+      duration: duration,
+    });
+  });
+
+  if (dots.length === 0) return;
+
+  var lastTime = null;
+
+  function animate(timestamp) {
+    if (!active) return;
+    var delta = lastTime ? (timestamp - lastTime) : 16;
+    lastTime  = timestamp;
+
+    dots.forEach(function(d) {
+      d.progress += delta / d.duration;
+      if (d.progress > 1) d.progress -= 1;
+
+      var t   = d.progress;
+      var lat = d.from[1] + (d.to[1] - d.from[1]) * t;
+      var lon = d.from[0] + (d.to[0] - d.from[0]) * t;
+      d.marker.setLatLng([lat, lon]);
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+
+  map.on("unload", function() { active = false; });
+})();
+// ── End animated flow dots ─────────────────────────────────────
+
+// ── CI legend bottom-right ────────────────────────────────────
+var legend = L.control({position:'topright'});
+legend.onAdd = function() {
+  var div = L.DomUtil.create('div','ci-legend');
+  div.innerHTML =
+    '<div class="legend-title">CI (gCO₂/kWh)</div>' +
+    [['#10b981','0 – 50'],
+     ['#84cc16','50 – 100'],
+     ['#eab308','100 – 150'],
+     ['#f97316','150 – 200'],
+     ['#ef4444','200 – 300'],
+     ['#7f1d1d','300+']
+    ].map(function(r){
+      return '<div class="legend-row">' +
+        '<div class="legend-swatch" style="background:'+r[0]+'"></div>'+
+        '<span>'+r[1]+'</span></div>';
+    }).join('');
+  return div;
+};
+legend.addTo(map);
+</script>
+</body>
+</html>

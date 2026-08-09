@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>GB Grid Flow</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #12141c;
+    color: #e8eaf0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 32px 16px;
+    box-sizing: border-box;
+  }
+  .stage {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    max-width: 1400px;
+    width: 100%;
+  }
+  .side-list {
+    min-width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .side-list.right { text-align: right; }
+  .side-item .label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #b98ee0;
+    text-transform: uppercase;
+  }
+  .side-item .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f2f3f7;
+  }
+  svg { width: 100%; height: auto; overflow: visible; }
+  .node-label {
+    font-size: 15px;
+    fill: #cfd2dc;
+    text-anchor: middle;
+  }
+  .node-value {
+    font-size: 17px;
+    font-weight: 700;
+    fill: #f2f3f7;
+    text-anchor: middle;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  .node-sublabel {
+    font-size: 12px;
+    fill: #9198a8;
+    text-anchor: middle;
+  }
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="stage">
+      <div class="side-list left" id="importsList"></div>
+      <svg id="svg" viewBox="0 0 940 500" role="img" aria-label="GB grid generation and interconnector flow">
+        <g id="flowLines" fill="none" stroke-width="2.5"></g>
+        <g id="flowDots" class="motion-reduce-hidden"></g>
+        <g id="nodes"></g>
+      </svg>
+      <div class="side-list right" id="exportsList"></div>
+    </div>
+    <div class="footer-note" id="asOf"></div>
+  </div>
+</div>
+
+<script>
+/* __DATA__ */
+const DATA = window.__GB_GRID_DATA__;
+
+const COLORS = {
+  bmGeneration: "#488fc2",
+  pumpedStorage: "#f06292",
+  lvWind: "#4db6ac",
+  solar: "#ff9800",
+  imports: "#7986cb",
+  exports: "#8353d1",
+  generationRing: "#5b6272",
+};
+
+const R_CENTER = 58;
+const R_NODE = 42;
+
+const NODES = {
+  imports:  { x: 210, y: 250 },
+  generation: { x: 480, y: 250 },
+  exports:  { x: 750, y: 250 },
+  bmGeneration: { x: 335, y: 95 },
+  pumpedStorage: { x: 625, y: 95 },
+  lvWind: { x: 335, y: 405 },
+  solar: { x: 480, y: 410 },
+};
+
+function fmtGW(mw, decimals) {
+  return (mw / 1000).toFixed(decimals) + " GW";
+}
+
+function curvePath(from, to, sweep) {
+  // Elbow curve: short vertical run, one wide cubic sweep, short horizontal
+  // run into the target -- same construction style as the real card's flow
+  // lines (see packages/shared/src/components/flows/*).
+  const midY = (from.y + to.y) / 2;
+  return `M${from.x},${from.y} V${midY} C${from.x},${midY + sweep} ${to.x},${midY - sweep} ${to.x},${to.y}`;
+}
+
+function straightPath(from, to) {
+  return `M${from.x},${from.y} L${to.x},${to.y}`;
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function drawNode(container, { x, y, label, value, sublabel, color, r }) {
+  const g = svgEl("g", {});
+  const circle = svgEl("circle", {
+    cx: x, cy: y, r: r ?? R_NODE, fill: "#1a1d29", stroke: color, "stroke-width": 2.5,
+  });
+  g.appendChild(circle);
+
+  const labelAbove = y < 200;
+  const labelEl = svgEl("text", {
+    x, y: labelAbove ? y - (r ?? R_NODE) - 14 : y + (r ?? R_NODE) + 22, class: "node-label",
+  });
+  labelEl.textContent = label;
+  g.appendChild(labelEl);
+
+  const valueEl = svgEl("text", { x, y: y + 6, class: "node-value", fill: color });
+  valueEl.textContent = value;
+  g.appendChild(valueEl);
+
+  if (sublabel) {
+    const subEl = svgEl("text", { x, y: y - 12, class: "node-sublabel" });
+    subEl.textContent = sublabel;
+    g.appendChild(subEl);
+  }
+
+  container.appendChild(g);
+}
+
+function drawRing(container, cx, cy, r, segments) {
+  const circumference = 2 * Math.PI * r;
+  let offsetDeg = -90; // start at 12 o'clock
+  segments.forEach(({ share, color }) => {
+    if (share <= 0) return;
+    const arcLen = circumference * share;
+    const circle = svgEl("circle", {
+      cx, cy, r,
+      fill: "none",
+      stroke: color,
+      "stroke-width": 4,
+      "stroke-dasharray": `${arcLen} ${circumference}`,
+      transform: `rotate(${offsetDeg} ${cx} ${cy})`,
+    });
+    container.appendChild(circle);
+    offsetDeg += 360 * share;
+  });
+}
+
+function drawFlow(linesG, dotsG, path, color, durSeconds) {
+  const p = svgEl("path", { d: path, stroke: color });
+  linesG.appendChild(p);
+
+  const dot = svgEl("circle", { r: 4, fill: color });
+  const anim = svgEl("animateMotion", {
+    dur: `${durSeconds}s`,
+    repeatCount: "indefinite",
+    calcMode: "paced",
+    path,
+  });
+  dot.appendChild(anim);
+  dotsG.appendChild(dot);
+}
+
+function durationFor(mw, maxMw) {
+  // Larger flows animate faster -- mirrors the real card's computeFlowRate
+  // (min/max flow rate bounds), just simplified to a direct scale here.
+  const MIN_DUR = 1.4, MAX_DUR = 6.0;
+  if (maxMw <= 0) return MAX_DUR;
+  const share = Math.min(Math.abs(mw) / maxMw, 1);
+  return MAX_DUR - share * (MAX_DUR - MIN_DUR);
+}
+
+function render() {
+  const linesG = document.getElementById("flowLines");
+  const dotsG = document.getElementById("flowDots");
+  const nodesG = document.getElementById("nodes");
+
+  const maxFlow = Math.max(
+    DATA.imports_gw, DATA.bm_generation_gw, DATA.lv_wind_gw, DATA.solar_gw,
+    Math.abs(DATA.pumped_storage_gw), DATA.exports_gw
+  ) * 1000;
+
+  // Flow lines into / out of Generation
+  drawFlow(linesG, dotsG, straightPath(NODES.imports, { x: NODES.generation.x - R_CENTER, y: NODES.generation.y }), COLORS.imports, durationFor(DATA.imports_gw * 1000, maxFlow));
+  drawFlow(linesG, dotsG, curvePath(NODES.bmGeneration, { x: NODES.generation.x - 20, y: NODES.generation.y - R_CENTER + 4 }, 45), COLORS.bmGeneration, durationFor(DATA.bm_generation_gw * 1000, maxFlow));
+  drawFlow(linesG, dotsG, curvePath(NODES.lvWind, { x: NODES.generation.x - 20, y: NODES.generation.y + R_CENTER - 4 }, -45), COLORS.lvWind, durationFor(DATA.lv_wind_gw * 1000, maxFlow));
+  drawFlow(linesG, dotsG, straightPath(NODES.solar, { x: NODES.generation.x, y: NODES.generation.y + R_CENTER }), COLORS.solar, durationFor(DATA.solar_gw * 1000, maxFlow));
+  if (DATA.pumped_storage_gw >= 0) {
+    drawFlow(linesG, dotsG, curvePath(NODES.pumpedStorage, { x: NODES.generation.x + 20, y: NODES.generation.y - R_CENTER + 4 }, 45), COLORS.pumpedStorage, durationFor(DATA.pumped_storage_gw * 1000, maxFlow));
+  } else {
+    drawFlow(linesG, dotsG, curvePath({ x: NODES.generation.x + 20, y: NODES.generation.y - R_CENTER + 4 }, NODES.pumpedStorage, -45), COLORS.pumpedStorage, durationFor(DATA.pumped_storage_gw * 1000, maxFlow));
+  }
+  drawFlow(linesG, dotsG, straightPath({ x: NODES.generation.x + R_CENTER, y: NODES.generation.y }, NODES.exports), COLORS.exports, durationFor(DATA.exports_gw * 1000, maxFlow));
+
+  // Generation ring: proportional arcs for each supply source
+  const total = DATA.total_generation_gw || 1;
+  drawRing(nodesG, NODES.generation.x, NODES.generation.y, R_CENTER, [
+    { share: DATA.bm_generation_gw / total, color: COLORS.bmGeneration },
+    { share: DATA.lv_wind_gw / total, color: COLORS.lvWind },
+    { share: DATA.solar_gw / total, color: COLORS.solar },
+    { share: Math.max(DATA.pumped_storage_gw, 0) / total, color: COLORS.pumpedStorage },
+    { share: DATA.imports_gw / total, color: COLORS.imports },
+  ]);
+
+  drawNode(nodesG, { ...NODES.bmGeneration, label: "BM Generation", value: fmtGW(DATA.bm_generation_gw * 1000, 1), color: COLORS.bmGeneration });
+  drawNode(nodesG, { ...NODES.pumpedStorage, label: "Pumped Storage", value: fmtGW(DATA.pumped_storage_gw * 1000, 2), color: COLORS.pumpedStorage });
+  drawNode(nodesG, { ...NODES.lvWind, label: "LV Wind", value: fmtGW(DATA.lv_wind_gw * 1000, 2), color: COLORS.lvWind });
+  drawNode(nodesG, { ...NODES.solar, label: "Solar", value: fmtGW(DATA.solar_gw * 1000, 2), color: COLORS.solar });
+  drawNode(nodesG, { ...NODES.imports, label: "Imports", value: fmtGW(DATA.imports_gw * 1000, 2), color: COLORS.imports });
+  drawNode(nodesG, { ...NODES.exports, label: "Exports", value: fmtGW(DATA.exports_gw * 1000, 2), color: COLORS.exports });
+  drawNode(nodesG, {
+    x: NODES.generation.x, y: NODES.generation.y, r: R_CENTER,
+    label: "Generation", value: fmtGW(DATA.total_generation_gw * 1000, 1), sublabel: "TOTAL",
+    color: "#e8eaf0",
+  });
+
+  const importsList = document.getElementById("importsList");
+  DATA.imports_by_country.forEach(({ country, mw }) => {
+    const item = document.createElement("div");
+    item.className = "side-item";
+    item.innerHTML = `<div class="label">${country} Imports</div><div class="value">${fmtGW(mw, 3)}</div>`;
+    importsList.appendChild(item);
+  });
+
+  const exportsList = document.getElementById("exportsList");
+  DATA.exports_by_country.forEach(({ country, mw }) => {
+    const item = document.createElement("div");
+    item.className = "side-item";
+    item.innerHTML = `<div class="label">${country} Exports</div><div class="value">${fmtGW(mw, 3)}</div>`;
+    exportsList.appendChild(item);
+  });
+
+  document.getElementById("asOf").textContent =
+    `Settlement period ${DATA.settlement_period} · ${DATA.settlement_date} · as of ${DATA.start_time} UTC`;
+}
+
+render();
+</script>
+</body>
+</html>
