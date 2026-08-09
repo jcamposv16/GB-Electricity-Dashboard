@@ -1,5 +1,11 @@
 
 # GB Electricity Dashboard
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.58-FF4B4B?style=flat&logo=streamlit&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=flat&logo=sqlite&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-Visualisation-3F4F75?style=flat&logo=plotly&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Leaflet-Maps-199900?style=flat&logo=leaflet&logoColor=white)
+![HuggingFace](https://img.shields.io/badge/Live%20App-Hugging%20Face-FFD21E?style=flat&logo=huggingface&logoColor=black)
 
 An interactive analytics platform for the Great Britain electricity market, covering generation mix, cross border interconnector flows, wholesale prices and regional carbon intensity from 2020 to the present.
 
